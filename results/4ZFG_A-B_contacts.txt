@@ -1,0 +1,14 @@
+# Contacts between A=(A) and B=(H)  cutoff=5.0 Å
+Rank  A_residue          B_residue           dmin(Å)  types
+   1  CYS:A:435          TYR:H:100A            3.383  hydrophobic,salt_bridge
+   2  ILE:A:434          TRP:H:33              3.543  hydrophobic,salt_bridge
+   3  ILE:A:434          TYR:H:58              3.563  hydrophobic,salt_bridge
+   4  CYS:A:435          TRP:H:33              3.809  hydrophobic,salt_bridge
+   5  ILE:A:434          TYR:H:100A            3.839  salt_bridge
+   6  PHE:A:469          LEU:H:99              3.953  hydrophobic,salt_bridge
+   7  CYS:A:433          TYR:H:100A            4.052  -
+   8  MET:A:440          PHE:H:98              4.342  hydrophobic
+   9  MET:A:440          PHE:H:97              4.355  -
+  10  ILE:A:434          HIS:H:35              4.384  hydrophobic
+  11  MET:A:440          LEU:H:99              4.434  -
+  12  MET:A:440          TYR:H:100A            4.894  -

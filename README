@@ -1,1 +1,0 @@
-python closest_residues.py ./PDB/4ZFG.pdb --top 15

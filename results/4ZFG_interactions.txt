@@ -1,0 +1,15 @@
+# Interactions around SO4:A:602 (cutoff 5.0 Å)
+Rank  Residue          dmin(Å)  types
+   1  SER:A:480          2.693  hbond
+   2  SER:L:30           2.712  hbond
+   3  GLY:A:481          2.834  hbond
+   4  LYS:A:473          2.873  hbond,salt_bridge
+   5  TYR:A:475          3.260  -
+   6  PHE:L:27A          3.477  -
+   7  SER:L:29           3.762  -
+   8  GLY:A:451          4.599  -
+   9  SER:L:67           4.700  -
+  10  GLY:A:479          4.716  -
+  11  PHE:L:31           4.877  -
+  12  LEU:L:28           4.879  -
+  13  PHE:A:469          4.926  -
