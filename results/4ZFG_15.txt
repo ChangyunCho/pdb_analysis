@@ -1,0 +1,17 @@
+# Closest residues to ligand SO4:A:602 (auto)
+Rank  Chain ResName ResID  MinDist(Å)
+   1  A     SER    480         2.693
+   2  L     SER    30          2.712
+   3  A     GLY    481         2.834
+   4  A     LYS    473         2.873
+   5  A     TYR    475         3.260
+   6  L     PHE    27A         3.477
+   7  L     SER    29          3.762
+   8  A     GLY    451         4.599
+   9  L     SER    67          4.700
+  10  A     GLY    479         4.716
+  11  L     PHE    31          4.877
+  12  L     LEU    28          4.879
+  13  A     PHE    469         4.926
+  14  L     GLY    68          5.114
+  15  A     TYR    482         5.211
