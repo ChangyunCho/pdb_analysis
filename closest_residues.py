@@ -12,15 +12,12 @@ def is_water(res):
     return res.get_resname().strip() in WATER_NAMES
 
 def is_protein_or_nucleic(res):
-    # Standard residues have hetflag ' ' (blank); includes protein and nucleic acid residues in most PDBs
     return res.get_id()[0] == ' '
 
 def is_ligand(res):
-    # HET groups that are not water
     return res.get_id()[0] != ' ' and not is_water(res)
 
 def altloc_ok(atom):
-    # Keep primary conformer and unlabelled altloc
     alt = atom.get_altloc()
     return (not atom.is_disordered()) or (alt in (' ', 'A'))
 
@@ -36,7 +33,6 @@ def describe_key(k: ResidueKey):
     return rn
 
 def pick_auto_ligand(structure):
-    # Return the ligand residue (HET, non-water) with the most atoms
     best = None
     best_count = -1
     for model in structure:
@@ -50,17 +46,12 @@ def pick_auto_ligand(structure):
     return best
 
 def find_res_by_token(structure, token):
-    """
-    token format: RESNAME:CHAIN:RESSEQ[ICODE]
-    Examples: "HEM:A:401", "ADP:B:12A", "LIG:C:7"
-    """
     try:
         resname, chain_id, restail = token.split(":")
     except ValueError:
         raise ValueError("Invalid --target-res format. Use RESNAME:CHAIN:RESSEQ[ICODE], e.g. LIG:A:101")
     resname = resname.strip()
     chain_id = chain_id.strip()
-    # separate resseq and optional icode (letter)
     resseq_str = restail.strip()
     if resseq_str and resseq_str[-1].isalpha():
         icode = resseq_str[-1]
@@ -95,13 +86,12 @@ def build_atom_table(residues):
     res_indices = []
     res_keys = []
     key_to_index = {}
-    # map residue -> row index in res_min
     for idx, res in enumerate(residues):
         rk = residue_key(res)
         res_keys.append(rk)
         key_to_index[rk] = idx
         for atom in atoms_of_residue(res):
-            coords.append(atom.coord)  # numpy array
+            coords.append(atom.coord) 
             res_indices.append(idx)
     if coords:
         coords = np.vstack(coords)
@@ -115,25 +105,19 @@ def target_atom_coords_from_residue(res):
     return np.vstack([a.coord for a in atoms_of_residue(res)]) if res else np.zeros((0,3))
 
 def compute_min_distances(atom_coords, atom_res_idx, target_coords, n_res):
-    # Initialize all residues with +inf min distance
     res_min = np.full((n_res,), np.inf, dtype=np.float64)
     if len(atom_coords) == 0 or len(target_coords) == 0:
         return res_min
-    # For each target atom, update per-residue minima using numpy's reduction
     for t in target_coords:
         dists = np.linalg.norm(atom_coords - t, axis=1)
-        # in-place groupwise min: res_min[res_idx] = min(res_min[res_idx], dists)
         np.minimum.at(res_min, atom_res_idx, dists)
     return res_min
 
 def _derive_pdb_id(pdb_path: str) -> str:
-    """Best-effort PDB id from filename, stripping common extensions."""
     name = Path(pdb_path).name
-    # Strip multiple known suffixes if present (e.g., .pdb.gz)
     for sfx in (".gz", ".bz2", ".xz", ".pdb", ".cif", ".mmcif", ".ent"):
         if name.endswith(sfx):
             name = name[: -len(sfx)]
-    # In case of double extensions like .pdb.gz, run once more
     for sfx in (".pdb", ".cif", ".mmcif", ".ent"):
         if name.endswith(sfx):
             name = name[: -len(sfx)]
@@ -158,7 +142,6 @@ def main():
         print(f"Failed to parse PDB: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Determine target coordinates
     target_coords = None
     target_label = None
     if args.point is not None:
@@ -176,7 +159,6 @@ def main():
         target_coords = tc
         target_label = f"residue {args.target_res}"
     else:
-        # auto-ligand fallback
         res = pick_auto_ligand(structure) if (args.auto_ligand or True) else None
         if res is None:
             print("No ligand found (non-water HET). Provide --target-res or --point.", file=sys.stderr)
@@ -186,7 +168,6 @@ def main():
         rk = residue_key(res)
         target_label = f"ligand {describe_key(rk)} (auto)"
 
-    # Build searchable atom table for protein/nucleic (and optional waters)
     residues = gather_search_residues(structure, include_waters=args.include_water)
     if not residues:
         print("No residues to search (protein/nucleic) found.", file=sys.stderr)
@@ -194,12 +175,11 @@ def main():
     atom_coords, atom_res_idx, res_keys = build_atom_table(residues)
     res_min = compute_min_distances(atom_coords, atom_res_idx, target_coords, n_res=len(res_keys))
 
-    # Rank and filter
     order = np.argsort(res_min)
     rows = []
     for rank, idx in enumerate(order, start=1):
         dist = float(res_min[idx])
-        if math.isinf(dist):  # unreachable (no atoms)
+        if math.isinf(dist): 
             continue
         if args.cutoff is not None and dist > args.cutoff:
             continue
@@ -208,7 +188,6 @@ def main():
         if args.top is not None and len(rows) >= args.top:
             break
 
-    # Prepare output text
     header_lines = []
     header_lines.append(f"# Closest residues to {target_label}")
     header_lines.append(f"{'Rank':>4}  {'Chain':<5} {'ResName':<6} {'ResID':<6} {'MinDist(Å)':>10}")
@@ -216,10 +195,8 @@ def main():
                   for rank, chain, resname, resid, dist in rows]
     output_text = "\n".join(header_lines + body_lines) + ("\n" if body_lines else "\n(no hits)\n")
 
-    # Console print (optional)
     print(output_text, end="")
 
-    # Ensure ./results and write file named {PDB_id}_{top}.txt
     results_dir = Path("./results")
     results_dir.mkdir(parents=True, exist_ok=True)
     pdb_id = _derive_pdb_id(args.pdb)

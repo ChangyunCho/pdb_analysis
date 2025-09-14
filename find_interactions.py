@@ -42,7 +42,6 @@ def pick_auto_ligand(structure):
     return best
 
 def find_res_by_token(structure, token):
-    # RES:CHAIN:SEQ[ICODE]
     resname, chain, tail = token.split(":")
     resname=resname.strip().upper(); chain=chain.strip()
     if tail and tail[-1].isalpha():
@@ -85,7 +84,6 @@ def element_of(atom):
 
 def classify_contacts(lig, res):
     contacts=set()
-    # Hydrophobic: C···C <= 4.5 Å
     for a in atom_array(lig):
         ea=element_of(a)
         if ea!="C": continue
@@ -96,7 +94,6 @@ def classify_contacts(lig, res):
                 contacts.add("hydrophobic"); break
         if "hydrophobic" in contacts: break
 
-    # H-bond (heavy-atom D···A <= 3.6 Å, 매우 단순화)
     def is_hbd(atom):  # donor heavy approx
         return element_of(atom) in HBD_ATOMS
     def is_hba(atom):  # acceptor heavy approx
@@ -160,7 +157,6 @@ def main():
     except Exception as e:
         print(f"Failed to parse PDB: {e}", file=sys.stderr); sys.exit(1)
 
-    # Pick ligand
     if args.target_res:
         lig=find_res_by_token(structure, args.target_res)
         if lig is None:
@@ -172,7 +168,6 @@ def main():
             print("No ligand (non-water HET) found; specify --target-res", file=sys.stderr); sys.exit(3)
         lig_label=residue_label(lig)
 
-    # Collect neighbor residues (protein only) within cutoff
     neighbors=[]
     for model in structure:
         for chain in model:

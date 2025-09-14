@@ -4,13 +4,12 @@ import numpy as np
 from collections import defaultdict
 from Bio.PDB import PDBParser
 
-# ---- 기본 상수/셋업 (기존 스크립트에서 사용한 정의 재사용/확장) ----
 WATERS = {"HOH","WAT","H2O"}
-POS_RES = {"LYS","ARG","HIP","HSP"}   # 양전하(근사)
-NEG_RES = {"ASP","GLU"}               # 음전하
+POS_RES = {"LYS","ARG","HIP","HSP"}  
+NEG_RES = {"ASP","GLU"}           
 METALS  = {"ZN","MG","CA","NA","K","FE","MN","CO","CU","NI"}
-HBD_ATOMS = {"N","O","S"}             # H-bond donor heavy (근사)
-HBA_ATOMS = {"N","O","S"}             # H-bond acceptor heavy (근사)
+HBD_ATOMS = {"N","O","S"}        
+HBA_ATOMS = {"N","O","S"}      
 
 def alt_ok(atom):
     return (not atom.is_disordered()) or atom.get_altloc() in (" ","A")
@@ -51,12 +50,9 @@ def min_distance(resA, resB):
                 dmin = d; pair = (a, b)
     return dmin, pair
 
-# ---- 상호작용 분류 (find_interactions.py의 휴리스틱 확장) ----
 def classify_contacts(res1, res2):
     """res1-res2 간 상호작용 유형 분류 (대칭)."""
     contacts = set()
-
-    # Hydrophobic: C···C <= 4.5 Å
     hydrophobic = False
     for a in atom_array(res1):
         if element_of(a) != "C": continue
@@ -67,7 +63,6 @@ def classify_contacts(res1, res2):
         if hydrophobic: break
     if hydrophobic: contacts.add("hydrophobic")
 
-    # H-bond (heavy-atom D···A <= 3.6 Å, 각도 무시: 근사)
     def is_hbd(atom): return element_of(atom) in HBD_ATOMS
     def is_hba(atom): return element_of(atom) in HBA_ATOMS
     hbond = False
@@ -80,12 +75,11 @@ def classify_contacts(res1, res2):
         if hbond: break
     if hbond: contacts.add("hbond")
 
-    # Salt bridge (양/음전하 잔기 근사 규칙, <= 4.0 Å)
     r1 = res1.get_resname().strip().upper()
     r2 = res2.get_resname().strip().upper()
     pos1 = r1 in POS_RES; neg1 = r1 in NEG_RES
     pos2 = r2 in POS_RES; neg2 = r2 in NEG_RES
-    # 리간드/펩타이드 구분 없이 원자 N/O를 근사 전하단서로 사용
+
     has_pos1 = pos1 or any(element_of(a) == "N" for a in atom_array(res1))
     has_neg1 = neg1 or any(element_of(a) == "O" for a in atom_array(res1))
     has_pos2 = pos2 or any(element_of(a) == "N" for a in atom_array(res2))
@@ -96,33 +90,24 @@ def classify_contacts(res1, res2):
         if d <= 4.0: salt = True
     if salt: contacts.add("salt_bridge")
 
-    # Metal coordination: 금속–N/O/S <= 3.0 Å
     def is_metal_atom(atom): return element_of(atom) in METALS
     def is_coord_atom(atom): return element_of(atom) in {"N","O","S"}
     metal = False
     for a in atom_array(res1):
         for b in atom_array(res2):
             d = np.linalg.norm(a.coord - b.coord)
-            if (is_metal_atom(a) and is_coord_atom(b) and d <= 3.0) or \
-               (is_metal_atom(b) and is_coord_atom(a) and d <= 3.0):
+            if (is_metal_atom(a) and is_coord_atom(b) and d <= 3.0) or (is_metal_atom(b) and is_coord_atom(a) and d <= 3.0):
                 metal = True; break
         if metal: break
     if metal: contacts.add("metal_coord")
 
     return contacts
 
-# ---- 선택자 파서 ----
-# set spec 문법:
-#   - "A" 또는 "chain:A"         -> 체인 A의 단백질 잔기 전체
-#   - "A:5-30"                   -> 체인 A의 resseq 5~30
-#   - "RES:CHAIN:SEQ[ICODE]"     -> 특정 잔기 (HET 포함), 예: ADP:B:123, CA:A:501
-#   - 콤마로 여러 개 조합: "A:5-30,B:10-40,ADP:B:123"
 def parse_set_spec(structure, spec):
     spec = (spec or "").strip()
     residues = []
     model = list(structure)[0]
     if spec.lower() in ("protein", "all_protein"):
-        # 모든 체인의 단백질 잔기
         for chain in model:
             for r in chain:
                 if is_protein_res(r) and not is_water(r):
@@ -165,7 +150,6 @@ def parse_set_spec(structure, spec):
             print(f"[WARN] Unrecognized token in set spec: '{tok}'", file=sys.stderr)
     return residues
 
-# ---- 저장 유틸 ----
 def save_csv_matrix(D, labels, path):
     import csv
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -209,14 +193,12 @@ def main():
     except Exception as e:
         print(f"Failed to parse PDB: {e}", file=sys.stderr); sys.exit(1)
 
-    # 집합 A 결정
     if args.setA:
         setA = parse_set_spec(structure, args.setA)
         if not setA:
             print("Set A selection returned no residues.", file=sys.stderr); sys.exit(2)
         setA_label = args.setA
     elif args.auto_ligand:
-        # 기존 로직: 가장 큰 HET 리간드 자동 선택 → 집합 A로 사용
         best = None; best_atoms = -1
         for model in structure:
             for chain in model:
@@ -231,23 +213,19 @@ def main():
         setA_label = f"ligand {residue_label(best)}"
     else:
         print("Please provide --setA (or use --auto-ligand).", file=sys.stderr); sys.exit(4)
-
-    # 집합 B 결정 (기본: 단백질 전체)
+        
     if args.setB:
         setB = parse_set_spec(structure, args.setB)
         if not setB:
             print("Set B selection returned no residues.", file=sys.stderr); sys.exit(5)
         setB_label = args.setB
     else:
-        # 기본값: 모든 단백질 잔기
         setB = parse_set_spec(structure, "protein")
         setB_label = "protein"
 
-    # 라벨
     labelsA = [residue_label(r) for r in setA]
     labelsB = [residue_label(r) for r in setB]
 
-    # A×B 거리행렬 (최소 원자-원자)
     nA, nB = len(setA), len(setB)
     D = np.zeros((nA, nB), dtype=np.float64)
     pairs = []
@@ -257,7 +235,6 @@ def main():
             D[i, j] = d
             pairs.append((d, i, j))
 
-    # Top-N 보고 (cutoff 기준 내에서 정렬)
     pairs.sort(key=lambda x: x[0])
     lines = []
     header = f"# Contacts between A=({setA_label}) and B=({setB_label})  cutoff={args.cutoff} Å"
@@ -296,7 +273,6 @@ def main():
             f.write(report)
         print(f"Saved report -> {args.txt}")
     else:
-        # 기본 저장 경로
         out_txt = results_dir / f"{pdb_id}_A-B_contacts.txt"
         with open(out_txt, "w", encoding="utf-8") as f:
             f.write(report)
